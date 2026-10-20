@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#0f0d1a" />
+<title>Oxis — Live Market Analyzer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  /* ============ DESIGN TOKENS ============ */
+  :root{
+    color-scheme: dark;
+    --bg: #0f0d1a;
+    --surface: #1a1730;
+    --surface-2: #221e3d;
+    --text: #f1efff;
+    --text-dim: rgba(241,239,255,.60);
+    --accent: #8b5cf6;
+    --accent-dark: #4c1d95;
+    --accent-soft: rgba(139,92,246,.15);
+    --accent-line: rgba(139,92,246,.45);
+    --border: rgba(241,239,255,.12);
+    --track: rgba(241,239,255,.10);
+    --glass: rgba(26,23,48,.60);
+    --shadow: 0 1.25rem 2.75rem -1.25rem rgba(0,0,0,.9);
+    --dur: 233ms;
+    --dur-press: 175ms;
+    --r-card: 1.25rem;
+    --r-btn: 1rem;
+    --pad: 1.25rem;
+  }
+
+  [data-theme="light"]{
+    color-scheme: light;
+    --bg: #f2eefc;
+    --surface: #ffffff;
+    --surface-2: #f7f4ff;
+    --text: #161226;
+    --text-dim: rgba(22,18,38,.65);
+    --accent: #7c3aed;
+    --accent-dark: #4c1d95;
+    --accent-soft: rgba(124,58,237,.12);
+    --accent-line: rgba(124,58,237,.42);
+    --border: rgba(22,18,38,.10);
+    --track: rgba(22,18,38,.08);
+    --glass: rgba(255,255,255,.65);
+    --shadow: 0 1.25rem 2.75rem -1.5rem rgba(76,29,149,.35);
+  }
+
+  /* ============ BASE ============ */
+  *,*::before,*::after{ box-sizing: border-box; }
+  html, body { max-width: 100vw; overflow-x: hidden; }
+  body{
+    margin: 0;
+    min-height: 100dvh;
+    background: var(--bg);
+    color: var(--text);
+    font-family: "Space Grotesk", system-ui, -apple-system, sans-serif;
+    font-size: 1rem;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    transition: background var(--dur) ease, color var(--dur) ease;
+  }
+
+  img, video { max-width: 100%; height: auto; }
+  [hidden] { display: none !important; }
+  :focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+
+  /* ============ LAYOUT ============ */
+  .app{
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 32rem;
+    margin-inline: auto;
+    padding: max(1rem, env(safe-area-inset-top)) var(--pad) 2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+
+  /* ============ NAVBAR ============ */
+  .nav{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1rem 1.25rem;
+    border-radius: 1.5rem;
+    background: var(--glass);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow);
+    backdrop-filter: blur(16px) saturate(140%);
+    -webkit-backdrop-filter: blur(16px) saturate(140%);
+  }
+
+  .brand { display: flex; align-items: center; gap: .85rem; }
+  .logo {
+    display: grid; place-items: center; width: 2.8rem; height: 2.8rem; border-radius: 50%;
+    color: #fff; background: linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 100%);
+    box-shadow: 0 0 0 1px rgba(255,255,255,.15) inset, 0 .6rem 1.5rem -.55rem var(--accent);
+  }
+  .logo svg { width: 1.5rem; height: 1.5rem; }
+  .brand-text h1 { font-size: 1.3rem; font-weight: 700; line-height: 1.15; margin: 0; }
+  .brand-text p { font-size: .8rem; color: var(--text-dim); margin: 0; font-weight: 500; }
+
+  .icon-btn {
+    display: grid; place-items: center; width: 2.8rem; height: 2.8rem; border-radius: 50%;
+    background: var(--surface-2); border: 1px solid var(--border); color: var(--text);
+    cursor: pointer; transition: transform var(--dur-press) ease;
+  }
+  .icon-btn:active { transform: scale(.94); }
+  .icon-btn svg { width: 1.3rem; height: 1.3rem; }
+  [data-theme="dark"] .icon-moon { display: none; }
+  [data-theme="light"] .icon-sun { display: none; }
+
+  /* ============ VIEWS ============ */
+  main { display: block; }
+  .view { display: none; flex-direction: column; gap: 1.5rem; }
+  .view.is-active { display: flex; animation: viewIn var(--dur) ease both; }
+  @keyframes viewIn { from { opacity: 0; transform: translateY(.75rem); } to { opacity: 1; transform: none; } }
+
+  /* ============ CARDS & Z-INDEX FIX ============ */
+  .card {
+    background: var(--glass); border: 1px solid var(--border); border-radius: var(--r-card);
+    box-shadow: var(--shadow); backdrop-filter: blur(16px) saturate(140%);
+    -webkit-backdrop-filter: blur(16px) saturate(140%); padding: 1.5rem;
+    position: relative;
+    z-index: 20;
+  }
+
+  /* ============ INLINE ROWS ============ */
+  .row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: .5rem 0;
+  }
+  .row-label {
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: var(--text-dim);
+    white-space: nowrap;
+  }
+
+  /* ============ CUSTOM DROPDOWN ============ */
+  .dropdown { position: relative; min-width: 10rem; }
+  .dropdown-btn {
+    width: 100%; display: flex; align-items: center; justify-content: space-between;
+    padding: .75rem 1rem; border-radius: var(--r-btn); background: var(--surface-2);
+    border: 1px solid var(--border); color: var(--text); font: inherit; font-weight: 700;
+    font-size: 1rem; cursor: pointer; transition: all var(--dur) ease;
+  }
+  .dropdown-btn:hover, .dropdown.is-open .dropdown-btn { border-color: var(--accent-line); background: var(--surface); }
+  .dropdown-btn .dd-content { display: flex; align-items: center; gap: .5rem; }
+  .dropdown-btn svg.chevron { width: 1.2rem; height: 1.2rem; transition: transform var(--dur) ease; }
+  .dropdown.is-open .dropdown-btn svg.chevron { transform: rotate(180deg); }
+
+  .dropdown-menu {
+    position: absolute; top: calc(100% + .5rem); right: 0; z-index: 100;
+    width: max-content; min-width: 12rem;
+    background: rgba(26, 23, 48, 0.95); border: 1px solid var(--accent-line); 
+    border-radius: var(--r-btn);
+    box-shadow: 0 10px 40px -10px rgba(0,0,0,0.8), 0 0 0 1px rgba(139,92,246,0.2) inset; 
+    backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); 
+    padding: .5rem; margin: 0;
+    list-style: none; display: none; flex-direction: column; gap: .2rem;
+    max-height: 15rem; overflow-y: auto;
+  }
+  [data-theme="light"] .dropdown-menu { background: rgba(255, 255, 255, 0.95); }
+  
+  .dropdown.is-open .dropdown-menu { display: flex; animation: slideDown 0.2s cubic-bezier(0.16, 1, 0.3, 1) both; }
+  @keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+
+  .dropdown-item {
+    display: flex; align-items: center; gap: .75rem; padding: .75rem 1rem;
+    border-radius: .75rem; cursor: pointer; font-weight: 600; font-size: 1rem;
+    transition: background var(--dur) ease, color var(--dur) ease;
+  }
+  .dropdown-item:hover, .dropdown-item.is-selected { background: var(--accent-soft); color: var(--text); }
+  .dropdown-item.is-selected { border-left: 3px solid var(--accent); border-radius: 0 .75rem .75rem 0; }
+  
+  /* Flags */
+  .flags { display: inline-flex; align-items: center; gap: .2rem; }
+  .flag { display: block; width: 1.3rem; height: .9rem; border-radius: .2rem; overflow: hidden; box-shadow: 0 0 0 1px rgba(255,255,255,.2); }
+  .flag svg { display: block; width: 100%; height: 100%; }
+
+  /* ============ BUTTONS ============ */
+  .btn-primary {
+    position: relative; overflow: hidden; width: 100%; padding: 1.1rem;
+    border: none; border-radius: var(--r-btn); color: #fff; font: inherit; font-weight: 700;
+    font-size: 1.15rem; cursor: pointer; background: linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 100%);
+    box-shadow: 0 0 0 1px rgba(255,255,255,.1) inset, 0 1rem 2.5rem -1rem var(--accent);
+    transition: transform var(--dur-press) ease, filter var(--dur) ease;
+    margin-top: 1rem;
+    z-index: 10;
+  }
+  .btn-primary:active { transform: scale(.95); }
+  .btn-primary::after {
+    content: ""; position: absolute; top: 0; bottom: 0; left: 0; width: 45%;
+    background: linear-gradient(100deg, transparent 0%, rgba(255,255,255,.4) 50%, transparent 100%);
+    transform: translateX(-250%) skewX(-18deg); animation: btnShimmer 2.6s ease-in-out infinite;
+  }
+  @keyframes btnShimmer { 0%, 55% { transform: translateX(-250%) skewX(-18deg); } 100% { transform: translateX(320%) skewX(-18deg); } }
+
+  .btn-secondary {
+    width: 100%; padding: 1rem; border-radius: var(--r-btn); background: var(--surface-2);
+    border: 1px solid var(--border); color: var(--text); font: inherit; font-weight: 700;
+    font-size: 1rem; cursor: pointer; transition: all var(--dur) ease;
+  }
+  .btn-secondary:hover { background: var(--accent-soft); border-color: var(--accent-line); }
+
+  /* ============ ERROR ANIMATION ============ */
+  .error-box {
+    background: #2a1215; border: 1px solid #ef4444; color: #fca5a5;
+    border-radius: var(--r-card); padding: 1.5rem; text-align: center;
+    font-weight: 700; font-size: 1.1rem; line-height: 1.4;
+    animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both, glowRed 2s infinite alternate;
+    display: flex; flex-direction: column; align-items: center; gap: .75rem;
+    z-index: 20;
+  }
+  .error-box svg { width: 2.5rem; height: 2.5rem; color: #ef4444; }
+  @keyframes shake {
+    10%, 90% { transform: translate3d(-1px, 0, 0); }
+    20%, 80% { transform: translate3d(2px, 0, 0); }
+    30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+    40%, 60% { transform: translate3d(4px, 0, 0); }
+  }
+  @keyframes glowRed { from { box-shadow: 0 0 10px rgba(239, 68, 68, 0.2); } to { box-shadow: 0 0 25px rgba(239, 68, 68, 0.6); } }
+
+  /* ============ PREMIUM LOADING ANIMATION ============ */
+  .loader-overlay {
+    position: fixed; inset: 0; z-index: 200; background: rgba(15, 13, 26, 0.9);
+    backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1.5rem;
+    opacity: 0; pointer-events: none; transition: opacity 0.3s ease;
+  }
+  .loader-overlay.is-active { opacity: 1; pointer-events: auto; }
+  
+  .spinner-box { position: relative; width: 5rem; height: 5rem; display: grid; place-items: center; }
+  .spinner-ring {
+    position: absolute; inset: 0; border-radius: 50%;
+    border: 3px solid transparent; border-top-color: var(--accent);
+    animation: spin 1.2s cubic-bezier(0.5, 0, 0.5, 1) infinite;
+  }
+  .spinner-ring:nth-child(2) {
+    inset: 8px; border-top-color: rgba(139,92,246,.4);
+    animation-direction: reverse; animation-duration: 1.5s;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  
+  .loader-text-wrap { height: 2rem; overflow: hidden; position: relative; width: 100%; text-align: center; }
+  .loader-text {
+    font-weight: 700; font-size: 1.1rem; color: var(--text);
+    position: absolute; width: 100%; left: 0; top: 0;
+    opacity: 0; transform: translateY(10px); transition: all 0.3s ease;
+  }
+  .loader-text.active { opacity: 1; transform: translateY(0); }
+
+  /* ============ RESULT CARD ============ */
+  .result { display: flex; flex-direction: column; align-items: center; gap: 1.5rem; padding: 1.5rem; }
+  .result-top { width: 100%; display: flex; align-items: flex-start; justify-content: space-between; }
+  .pair-name { font-size: 1.3rem; font-weight: 700; display: flex; align-items: center; gap: .5rem; }
+  .pair-meta { font-size: .8rem; color: var(--text-dim); margin-top: .2rem; }
+  
+  .feed-badge {
+    display: inline-flex; align-items: center; gap: .4rem; padding: .3rem .7rem;
+    border-radius: 999px; font-size: .7rem; font-weight: 700; color: var(--accent);
+    background: var(--accent-soft); border: 1px solid var(--accent-line);
+  }
+  .feed-badge::before { content: ""; width: .4rem; height: .4rem; border-radius: 50%; background: var(--accent); }
+
+  /* PREMIUM MEDIUM CIRCLE DIRECTION */
+  .circle-direction {
+    width: 9rem; height: 9rem; border-radius: 50%;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    color: #fff; background: linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 100%);
+    box-shadow: 0 0 2.5rem var(--accent), inset 0 0 1.5rem rgba(255,255,255,0.2);
+    animation: pulseCircle 2.5s infinite alternate; position: relative; margin-block: .5rem;
+  }
+  .circle-direction.is-sell {
+    background: linear-gradient(135deg, #ef4444 0%, #991b1b 100%);
+    box-shadow: 0 0 2.5rem #ef4444, inset 0 0 1.5rem rgba(255,255,255,0.2);
+  }
+  @keyframes pulseCircle { 0% { transform: scale(1); } 100% { transform: scale(1.04); } }
+  .circle-direction svg { width: 2rem; height: 2rem; margin-bottom: .2rem; }
+  .dir-text { font-size: 1.6rem; font-weight: 700; letter-spacing: .05em; line-height: 1; }
+
+  .entry { display: flex; flex-direction: column; align-items: center; gap: .1rem; text-align: center; }
+  .entry-time { font-size: 2.8rem; font-weight: 700; line-height: 1.1; font-variant-numeric: tabular-nums; }
+  .entry-sub { font-size: .9rem; color: var(--text-dim); font-weight: 500; }
+
+  .strength { width: 100%; display: flex; flex-direction: column; gap: .5rem; }
+  .strength-head { display: flex; justify-content: space-between; font-weight: 700; font-size: .95rem; color: var(--text-dim); }
+  .strength-head strong { color: var(--text); font-size: 1.05rem; }
+  .meter { height: .7rem; border-radius: 999px; background: var(--track); overflow: hidden; }
+  .meter-fill { display: block; height: 100%; width: 0; border-radius: 999px; background: linear-gradient(90deg, var(--accent-dark) 0%, var(--accent) 100%); transition: width 800ms cubic-bezier(.2,.8,.2,1); }
+
+  /* ============ INSIGHT TEXT ============ */
+  .insight-box {
+    width: 100%; background: var(--surface-2); border: 1px solid var(--border);
+    border-radius: var(--r-btn); padding: 1.25rem; margin-top: .5rem;
+    animation: viewIn 0.5s ease both 0.2s;
+    position: relative; overflow: hidden;
+  }
+  .insight-box::before {
+    content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 4px;
+    background: linear-gradient(to bottom, var(--accent), var(--accent-dark));
+  }
+  .insight-title { font-size: .8rem; font-weight: 700; color: var(--accent); margin-bottom: .4rem; text-transform: uppercase; letter-spacing: .05em; }
+  .insight-text { font-size: .95rem; line-height: 1.5; color: var(--text); }
+  .insight-text strong { font-weight: 700; color: var(--text); }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <!-- NAVBAR -->
+  <header class="nav">
+    <div class="brand">
+      <span class="logo" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 16.5l5-6 4 3.5 4-6 5 5"/>
+        </svg>
+      </span>
+      <div class="brand-text">
+        <h1>Oxis</h1>
+        <p>Live market analyzer</p>
+      </div>
+    </div>
+    <button class="icon-btn" id="themeBtn" type="button" aria-label="Toggle theme">
+      <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+      <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a6.6 6.6 0 0 0 10.5 10.5z"/></svg>
+    </button>
+  </header>
+
+  <main>
+    <!-- ANALYZE VIEW -->
+    <section class="view is-active" id="viewAnalyze">
+      
+      <div class="card" style="display: flex; flex-direction: column; gap: 1rem;">
+        <!-- Market Pair Row -->
+        <div class="row">
+          <span class="row-label">Market Pair</span>
+          <div class="dropdown" id="marketDropdown">
+            <button class="dropdown-btn" id="dropdownToggle" type="button" aria-haspopup="listbox">
+              <div class="dd-content" id="selectedMarketDisplay"></div>
+              <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+            </button>
+            <ul class="dropdown-menu" role="listbox" id="marketList"></ul>
+          </div>
+        </div>
+
+        <hr style="border:0; border-top: 1px solid var(--border); margin: 0;">
+
+        <!-- Timeframe Row -->
+        <div class="row">
+          <span class="row-label">Timeframe</span>
+          <div class="dropdown" id="tfDropdown">
+            <button class="dropdown-btn" id="tfToggle" type="button" aria-haspopup="listbox">
+              <div class="dd-content" id="selectedTfDisplay">1m</div>
+              <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+            </button>
+            <ul class="dropdown-menu" role="listbox" id="tfList"></ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- Error Box (Hidden by default) -->
+      <div class="error-box" id="errorBox" hidden>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        <span id="errorText">Network Error! Unable to connect.</span>
+      </div>
+
+      <button class="btn-primary" id="signalBtn" type="button">
+        <span>Get Signal</span>
+      </button>
+    </section>
+
+    <!-- SIGNAL VIEW -->
+    <section class="view" id="viewSignal">
+      <div class="card result" id="resultCard">
+        
+        <div class="result-top">
+          <div>
+            <div class="pair-name" id="rPair"></div>
+            <div class="pair-meta" id="rMeta"></div>
+          </div>
+          <span class="feed-badge">Live Data</span>
+        </div>
+
+        <!-- Medium Circular Direction Button -->
+        <div class="circle-direction" id="rDirection">
+          <span id="rDirIcon"></span>
+          <span class="dir-text" id="rDirText">BUY</span>
+        </div>
+
+        <div class="entry">
+          <span class="row-label">Best entry time</span>
+          <span class="entry-time" id="rEntry">--:--</span>
+          <span class="entry-sub" id="rCountdown">waiting...</span>
+        </div>
+
+        <div class="strength">
+          <div class="strength-head">
+            <span>Signal strength</span>
+            <strong id="rStrengthVal">0/95</strong>
+          </div>
+          <div class="meter"><span class="meter-fill" id="rMeter"></span></div>
+        </div>
+
+        <!-- Text-based Insight instead of raw numbers -->
+        <div class="insight-box">
+          <div class="insight-title">Market Insight</div>
+          <div class="insight-text" id="rInsight">Analyzing market structure...</div>
+        </div>
+
+      </div>
+
+      <button class="btn-secondary" id="againBtn" type="button">New Analysis</button>
+    </section>
+  </main>
+</div>
+
+<!-- PREMIUM LOADING OVERLAY -->
+<div class="loader-overlay" id="loader">
+  <div class="spinner-box">
+    <div class="spinner-ring"></div>
+    <div class="spinner-ring"></div>
+  </div>
+  <div class="loader-text-wrap">
+    <div class="loader-text active" id="loadText1">Connecting to Live Market...</div>
+    <div class="loader-text" id="loadText2">Fetching historical candles...</div>
+    <div class="loader-text" id="loadText3">Calculating RSI & EMA...</div>
+    <div class="loader-text" id="loadText4">Generating signal...</div>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  // --- FLAGS DATA ---
+  const FLAG_SVG = {
+    us: '<svg viewBox="0 0 24 16" preserveAspectRatio="none"><rect width="24" height="16" fill="#ffffff"/><g fill="#b22234"><rect y="0" width="24" height="1.6"/><rect y="3.2" width="24" height="1.6"/><rect y="6.4" width="24" height="1.6"/><rect y="9.6" width="24" height="1.6"/><rect y="12.8" width="24" height="1.6"/><rect y="15.2" width="24" height="0.8"/></g><rect width="10.5" height="8" fill="#3c3b6e"/></svg>',
+    eu: '<svg viewBox="0 0 24 16" preserveAspectRatio="none"><rect width="24" height="16" fill="#003399"/><g fill="#ffcc00"><circle cx="12" cy="4.2" r=".68"/><circle cx="14.8" cy="5.3" r=".68"/><circle cx="15.9" cy="8" r=".68"/><circle cx="14.8" cy="10.7" r=".68"/><circle cx="12" cy="11.8" r=".68"/><circle cx="9.2" cy="10.7" r=".68"/><circle cx="8.1" cy="8" r=".68"/><circle cx="9.2" cy="5.3" r=".68"/></g></svg>',
+    jp: '<svg viewBox="0 0 24 16" preserveAspectRatio="none"><rect width="24" height="16" fill="#ffffff"/><circle cx="12" cy="8" r="4.2" fill="#bc002d"/></svg>',
+    gb: '<svg viewBox="0 0 24 16" preserveAspectRatio="none"><rect width="24" height="16" fill="#012169"/><path d="M0 0 L24 16 M24 0 L0 16" stroke="#ffffff" stroke-width="2.6"/><path d="M0 0 L24 16 M24 0 L0 16" stroke="#c8102e" stroke-width="1.3"/><path d="M12 0 V16 M0 8 H24" stroke="#ffffff" stroke-width="4"/><path d="M12 0 V16 M0 8 H24" stroke="#c8102e" stroke-width="2.2"/></svg>',
+    ch: '<svg viewBox="0 0 24 16" preserveAspectRatio="none"><rect width="24" height="16" fill="#d52b1e"/><rect x="10.2" y="3.4" width="3.6" height="9.2" fill="#ffffff"/><rect x="7.4" y="6.2" width="9.2" height="3.6" fill="#ffffff"/></svg>',
+    au: '<svg viewBox="0 0 24 16" preserveAspectRatio="none"><rect width="24" height="16" fill="#00247d"/><g fill="#ffffff"><circle cx="5" cy="12" r=".9"/><circle cx="17" cy="4" r=".9"/><circle cx="20" cy="8" r=".7"/><circle cx="16" cy="11.5" r=".7"/><circle cx="19.5" cy="13" r=".6"/></g></svg>',
+    ca: '<svg viewBox="0 0 24 16" preserveAspectRatio="none"><rect width="24" height="16" fill="#ffffff"/><rect width="6" height="16" fill="#d52b1e"/><rect x="18" width="6" height="16" fill="#d52b1e"/><path d="M12 4.2l1 2.1 2-.7-.8 2 1.7 1-2.2.7.5 2-2.2-1.2-2.2 1.2.5-2-2.2-.7 1.7-1-.8-2 2 .7z" fill="#d52b1e"/></svg>',
+    nz: '<svg viewBox="0 0 24 16" preserveAspectRatio="none"><rect width="24" height="16" fill="#00247d"/><g fill="#c8102e" stroke="#ffffff" stroke-width=".5"><circle cx="16.5" cy="4" r=".9"/><circle cx="20" cy="7" r=".8"/><circle cx="16" cy="10" r=".8"/><circle cx="19.5" cy="12.5" r=".7"/></g></svg>'
+  };
+
+  const CURRENCY_FLAG = { USD: 'us', EUR: 'eu', JPY: 'jp', GBP: 'gb', CHF: 'ch', AUD: 'au', CAD: 'ca', NZD: 'nz' };
+
+  const PAIRS = [
+    { symbol: 'EUR/USD', base: 'EUR', quote: 'USD', yahoo: 'EURUSD=X' },
+    { symbol: 'GBP/USD', base: 'GBP', quote: 'USD', yahoo: 'GBPUSD=X' },
+    { symbol: 'USD/JPY', base: 'USD', quote: 'JPY', yahoo: 'USDJPY=X' },
+    { symbol: 'USD/CHF', base: 'USD', quote: 'CHF', yahoo: 'USDCHF=X' },
+    { symbol: 'AUD/USD', base: 'AUD', quote: 'USD', yahoo: 'AUDUSD=X' },
+    { symbol: 'USD/CAD', base: 'USD', quote: 'CAD', yahoo: 'USDCAD=X' },
+    { symbol: 'NZD/USD', base: 'NZD', quote: 'USD', yahoo: 'NZDUSD=X' },
+    { symbol: 'EUR/GBP', base: 'EUR', quote: 'GBP', yahoo: 'EURGBP=X' }
+  ];
+
+  const TIMEFRAMES = [
+    { label: '1m',  interval: '1m', range: '1d', g: 60 },
+    { label: '5m',  interval: '5m', range: '5d', g: 300 },
+    { label: '15m', interval: '15m', range: '1mo', g: 900 },
+    { label: '1h',  interval: '1h', range: '1mo', g: 3600 }
+  ];
+
+  let state = { pairIndex: 0, tfIndex: 0, busy: false };
+  let countdownTimer = null;
+
+  // --- DOM ELEMENTS ---
+  const $ = (sel) => document.querySelector(sel);
+  const $$ = (sel) => Array.from(document.querySelectorAll(sel));
+
+  // --- RENDER DROPDOWNS ---
+  function flagMarkup(currency) {
+    const key = CURRENCY_FLAG[currency];
+    return `<span class="flag">${FLAG_SVG[key] || ''}</span>`;
+  }
+
+  function setupDropdowns() {
+    const marketList = $('#marketList');
+    PAIRS.forEach((pair, i) => {
+      const parts = pair.symbol.split('/');
+      const li = document.createElement('li');
+      li.className = `dropdown-item ${i === 0 ? 'is-selected' : ''}`;
+      li.innerHTML = `<span>${pair.symbol}</span> <span class="flags">${flagMarkup(parts[0])}${flagMarkup(parts[1])}</span>`;
+      li.onclick = () => {
+        state.pairIndex = i;
+        updateMarketDisplay();
+        $('#marketDropdown').classList.remove('is-open');
+      };
+      marketList.appendChild(li);
+    });
+
+    const tfList = $('#tfList');
+    TIMEFRAMES.forEach((tf, i) => {
+      const li = document.createElement('li');
+      li.className = `dropdown-item ${i === 0 ? 'is-selected' : ''}`;
+      li.textContent = tf.label;
+      li.onclick = () => {
+        state.tfIndex = i;
+        updateTfDisplay();
+        $('#tfDropdown').classList.remove('is-open');
+      };
+      tfList.appendChild(li);
+    });
+
+    $('#dropdownToggle').onclick = (e) => { e.stopPropagation(); $('#marketDropdown').classList.toggle('is-open'); $('#tfDropdown').classList.remove('is-open'); };
+    $('#tfToggle').onclick = (e) => { e.stopPropagation(); $('#tfDropdown').classList.toggle('is-open'); $('#marketDropdown').classList.remove('is-open'); };
+
+    document.addEventListener('click', () => {
+      $('#marketDropdown').classList.remove('is-open');
+      $('#tfDropdown').classList.remove('is-open');
+    });
+
+    updateMarketDisplay();
+    updateTfDisplay();
+  }
+
+  function updateMarketDisplay() {
+    const pair = PAIRS[state.pairIndex];
+    const parts = pair.symbol.split('/');
+    $('#selectedMarketDisplay').innerHTML = `<span>${pair.symbol}</span> <span class="flags">${flagMarkup(parts[0])}${flagMarkup(parts[1])}</span>`;
+    $$('#marketList .dropdown-item').forEach((el, i) => el.classList.toggle('is-selected', i === state.pairIndex));
+  }
+
+  function updateTfDisplay() {
+    $('#selectedTfDisplay').textContent = TIMEFRAMES[state.tfIndex].label;
+    $$('#tfList .dropdown-item').forEach((el, i) => el.classList.toggle('is-selected', i === state.tfIndex));
+  }
+
+  // --- REAL DATA FETCHING (Multi-Proxy Fallback) ---
+  async function fetchYahooFinanceData(symbol, interval, range) {
+    const yUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=${interval}&range=${range}`;
+    
+    // We try 3 different free CORS proxies to ensure maximum reliability
+    const proxies = [
+      `https://api.allorigins.win/raw?url=${encodeURIComponent(yUrl)}`,
+      `https://corsproxy.io/?url=${encodeURIComponent(yUrl)}`,
+      `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(yUrl)}`
+    ];
+
+    for (let i = 0; i < proxies.length; i++) {
+      try {
+        const res = await fetch(proxies[i]);
+        if (!res.ok) continue;
+        
+        const data = await res.json();
+        if (data.chart && data.chart.result && data.chart.result[0]) {
+          const quotes = data.chart.result[0].indicators.quote[0];
+          if (quotes && quotes.close) {
+            // Filter out null values (often the current unfinished candle)
+            const closes = quotes.close.filter(c => c !== null && typeof c === 'number');
+            if (closes.length > 50) return closes;
+          }
+        }
+      } catch (e) {
+        console.warn(`Proxy ${i+1} failed, trying next...`);
+      }
+    }
+    
+    throw new Error('All data servers are busy. Please try again.');
+  }
+
+  // --- INDICATOR MATH ---
+  function calculateEMA(prices, period) {
+    const k = 2 / (period + 1);
+    // Start with SMA for the first value to be more accurate
+    let ema = prices.slice(0, period).reduce((a, b) => a + b, 0) / period;
+    for (let i = period; i < prices.length; i++) {
+      ema = prices[i] * k + ema * (1 - k);
+    }
+    return ema;
+  }
+
+  function calculateRSI(prices, period = 14) {
+    let gains = 0, losses = 0;
+    for (let i = 1; i <= period; i++) {
+      const diff = prices[i] - prices[i - 1];
+      if (diff >= 0) gains += diff;
+      else losses -= diff;
+    }
+    let avgGain = gains / period;
+    let avgLoss = losses / period;
+    for (let i = period + 1; i < prices.length; i++) {
+      const diff = prices[i] - prices[i - 1];
+      avgGain = (avgGain * (period - 1) + Math.max(diff, 0)) / period;
+      avgLoss = (avgLoss * (period - 1) + Math.max(-diff, 0)) / period;
+    }
+    if (avgLoss === 0) return 100;
+    const rs = avgGain / avgLoss;
+    return 100 - (100 / (1 + rs));
+  }
+
+  // --- SIGNAL LOGIC (BASED ON REAL MATH) ---
+  function generateRealSignal(closes, pair) {
+    const currentPrice = closes[closes.length - 1];
+    
+    const rsi = calculateRSI(closes, 14);
+    const ema9 = calculateEMA(closes, 9);
+    const ema21 = calculateEMA(closes, 21);
+    
+    let direction = 'BUY';
+    let strength = 50;
+
+    if (ema9 > ema21 && rsi > 50) {
+      direction = 'BUY';
+      strength = 60 + (rsi - 50) * 0.5 + Math.min((ema9 - ema21) / ema21 * 10000, 30);
+    } else if (ema9 < ema21 && rsi < 50) {
+      direction = 'SELL';
+      strength = 60 + (50 - rsi) * 0.5 + Math.min((ema21 - ema9) / ema21 * 10000, 30);
+    } else {
+      direction = ema9 > ema21 ? 'BUY' : 'SELL';
+      strength = 45; 
+    }
+    
+    strength = Math.min(Math.max(strength, 20), 95);
+
+    let insight = `Current market structure indicates a <strong>${direction}</strong> setup for ${pair.symbol} at ${currentPrice.toFixed(pair.quote === 'JPY' ? 3 : 5)}. `;
+    
+    if (direction === 'BUY') {
+      if (rsi > 65) {
+        insight += `The RSI is currently high at <strong>${rsi.toFixed(1)}</strong>, indicating strong bullish momentum, though approaching overbought territory. `;
+      } else {
+        insight += `The RSI sits neutrally at <strong>${rsi.toFixed(1)}</strong>, showing room for upward movement. `;
+      }
+      insight += `Additionally, the short-term EMA (9) is holding above the long-term EMA (21), confirming the upward trend.`;
+    } else {
+      if (rsi < 35) {
+        insight += `The RSI is currently low at <strong>${rsi.toFixed(1)}</strong>, indicating strong bearish momentum and potential oversold conditions. `;
+      } else {
+        insight += `The RSI reads <strong>${rsi.toFixed(1)}</strong>, reflecting a bearish shift in market sentiment. `;
+      }
+      insight += `The short-term EMA (9) has crossed below the long-term EMA (21), signaling downward pressure.`;
+    }
+    
+    return { direction, strength: Math.round(strength), insight };
+  }
+
+  // --- PREMIUM LOADER LOGIC ---
+  async function runPremiumLoader() {
+    const texts = [$('#loadText1'), $('#loadText2'), $('#loadText3'), $('#loadText4')];
+    let current = 0;
+    
+    texts.forEach(t => t.classList.remove('active'));
+    texts[0].classList.add('active');
+
+    const loaderPromise = new Promise(resolve => {
+      const interval = setInterval(() => {
+        current++;
+        if (current >= texts.length) {
+          clearInterval(interval);
+          resolve();
+          return;
+        }
+        texts.forEach(t => t.classList.remove('active'));
+        texts[current].classList.add('active');
+      }, 600); // 600ms per step
+    });
+
+    return loaderPromise;
+  }
+
+  // --- MAIN FLOW ---
+  async function handleGetSignal() {
+    if (state.busy) return;
+    state.busy = true;
+    
+    $('#errorBox').hidden = true;
+    
+    const loader = $('#loader');
+    loader.classList.add('is-active');
+    
+    const pair = PAIRS[state.pairIndex];
+    const tf = TIMEFRAMES[state.tfIndex];
+
+    try {
+      const [closes] = await Promise.all([
+        fetchYahooFinanceData(pair.yahoo, tf.interval, tf.range),
+        runPremiumLoader() 
+      ]);
+      
+      const signalData = generateRealSignal(closes, pair);
+      renderResult(signalData, pair, tf);
+      
+    } catch (err) {
+      $('#errorText').textContent = err.message;
+      $('#errorBox').hidden = false;
+      setTimeout(() => { $('#errorBox').hidden = true; }, 5000);
+    } finally {
+      loader.classList.remove('is-active');
+      state.busy = false;
+    }
+  }
+
+  function renderResult(signal, pair, tf) {
+    $('#viewAnalyze').classList.remove('is-active');
+    $('#viewSignal').classList.add('is-active');
+
+    const parts = pair.symbol.split('/');
+    $('#rPair').innerHTML = `${pair.symbol} <span class="flags">${flagMarkup(parts[0])}${flagMarkup(parts[1])}</span>`;
+    $('#rMeta').textContent = `${tf.label} · Real Data Analysis`;
+
+    const dirEl = $('#rDirection');
+    $('#rDirText').textContent = signal.direction;
+    dirEl.className = `circle-direction ${signal.direction === 'SELL' ? 'is-sell' : ''}`;
+    $('#rDirIcon').innerHTML = signal.direction === 'BUY' 
+      ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M12 19V5M5 12l7-7 7 7"/></svg>'
+      : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M12 5v14M19 12l-7 7-7-7"/></svg>';
+
+    const nextCandleTime = Math.ceil(Date.now() / (tf.g * 1000)) * (tf.g * 1000);
+    const entryTimeStr = new Date(nextCandleTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+    $('#rEntry').textContent = entryTimeStr;
+
+    $('#rStrengthVal').textContent = `${signal.strength}/95`;
+    const meter = $('#rMeter');
+    meter.style.width = '0%';
+    setTimeout(() => { meter.style.width = `${signal.strength}%`; }, 150);
+
+    $('#rInsight').innerHTML = signal.insight;
+
+    if (countdownTimer) clearInterval(countdownTimer);
+    countdownTimer = setInterval(() => {
+      const diff = nextCandleTime - Date.now();
+      if (diff <= 0) {
+        $('#rCountdown').textContent = 'window open';
+        clearInterval(countdownTimer);
+      } else {
+        $('#rCountdown').textContent = `opens in ${Math.floor(diff/1000)}s`;
+      }
+    }, 1000);
+  }
+
+  // --- THEME TOGGLE ---
+  $('#themeBtn').onclick = () => {
+    const root = document.documentElement;
+    const next = root.dataset.theme === 'light' ? 'dark' : 'light';
+    root.dataset.theme = next;
+    document.querySelector('meta[name="theme-color"]').content = next === 'light' ? '#f2eefc' : '#0f0d1a';
+  };
+
+  // --- INIT ---
+  setupDropdowns();
+  $('#signalBtn').onclick = handleGetSignal;
+  $('#againBtn').onclick = () => {
+    $('#viewSignal').classList.remove('is-active');
+    $('#viewAnalyze').classList.add('is-active');
+    if (countdownTimer) clearInterval(countdownTimer);
+  };
+
+})();
+</script>
+</body>
+</html>
